@@ -1,0 +1,49 @@
+# Build and test ASP.NET projects.
+# Add steps that publish symbols, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
+
+# Continuous API testing microservices in Test environment
+
+trigger:
+  branches:
+    include:
+      - '*'
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '3.1.x' # .NET Core 3.1
+
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(System.DefaultWorkingDirectory)/Cascade-Functional-Tests.sln'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(System.DefaultWorkingDirectory)/Cascade-Functional-Tests.sln'
+    msbuildArgs: '/p:Configuration=$(buildConfiguration)'
+    platform: 'Any CPU'
+    configuration: '$(buildConfiguration)'
+
+- script: dir $(System.DefaultWorkingDirectory)\bin\Release\netcoreapp3.1\
+  displayName: 'List test assembly files in Debug directory'
+
+- task: VSTest@2
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: |
+      **\bin\Release\netcoreapp3.1\*Tests.dll
+      !**\*TestAdapter.dll
+      !**\obj\**
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    otherConsoleOptions: '/TestCaseFilter:"TestCategory=scheduled-pipeline"'
+    diagnosticsEnabled: true
